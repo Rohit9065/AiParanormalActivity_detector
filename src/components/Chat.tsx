@@ -12,30 +12,35 @@ type Message = {
 // Custom component for Glitch Text
 const GlitchText = ({ text }: { text: string }) => {
   const [displayedText, setDisplayedText] = useState('');
-  const chars = '!<>-_\\\\/[]{}—=+*^?#_';
   
   useEffect(() => {
     let i = 0;
+    const chars = '!<>-_\\\\/[]{}—=+*^?#_';
+    
     const interval = setInterval(() => {
       if (i >= text.length) {
+        setDisplayedText(text); // Ensure final text is perfectly clean
         clearInterval(interval);
         return;
       }
       
       const shouldGlitch = Math.random() > 0.85;
-      const charToAdd = shouldGlitch ? chars[Math.floor(Math.random() * chars.length)] : text[i];
       
-      setDisplayedText((prev) => {
-        const cleanPrev = prev.slice(0, i);
-        return cleanPrev + charToAdd;
-      });
-
-      if (!shouldGlitch) {
+      if (shouldGlitch) {
+        // Just show a glitch character temporarily, don't advance the real text index
+        const randomChar = chars[Math.floor(Math.random() * chars.length)];
+        setDisplayedText(text.slice(0, i) + randomChar);
+      } else {
+        // Show real character and advance
+        setDisplayedText(text.slice(0, i + 1));
         i++;
       }
     }, 15);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      setDisplayedText(text); // Fallback if unmounted
+    };
   }, [text]);
 
   return <span>{displayedText}</span>;
