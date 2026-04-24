@@ -54,7 +54,7 @@ export default function Chat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Audio Refs
-  const audioCtxRef = useRef<window.AudioContext | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const droneOscRef = useRef<OscillatorNode | null>(null);
 
   const initAudio = () => {
