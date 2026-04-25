@@ -51,8 +51,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ text: response.text });
     } catch (error: any) {
       console.error('API Error:', error);
+      const errorStr = error.message || String(error);
+      if (errorStr.includes('429') || errorStr.includes('quota') || errorStr.includes('RESOURCE_EXHAUSTED')) {
+        return NextResponse.json(
+          { error: 'RATE LIMIT REACHED: The ethereal frequencies are jammed! You are asking questions too quickly. Please wait 60 seconds and try again.' },
+          { status: 429 }
+        );
+      }
       return NextResponse.json(
-        { error: 'Backend Error: ' + (error.message || String(error)) },
+        { error: 'Backend Error: ' + errorStr },
         { status: 500 }
       );
     }
