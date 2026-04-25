@@ -83,9 +83,10 @@ export default function Chat() {
       
       const osc = audioCtxRef.current!.createOscillator();
       const gain = audioCtxRef.current!.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = 55;
-      gain.gain.value = 0.1;
+      // Using 'triangle' at 110Hz makes it audible on mobile/laptop speakers
+      osc.type = 'triangle';
+      osc.frequency.value = 110; 
+      gain.gain.value = 0.15;
       osc.connect(gain);
       gain.connect(audioCtxRef.current!.destination);
       osc.start();
@@ -118,8 +119,8 @@ export default function Chat() {
     filter.frequency.value = 1000;
     
     const gainNode = audioCtxRef.current.createGain();
-    gainNode.gain.setValueAtTime(0.05, audioCtxRef.current.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtxRef.current.currentTime + 0.4);
+    gainNode.gain.setValueAtTime(0.2, audioCtxRef.current.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtxRef.current.currentTime + 0.5);
 
     whiteNoise.connect(filter);
     filter.connect(gainNode);
