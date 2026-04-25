@@ -439,10 +439,6 @@ export default function Chat() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
-            <button onClick={toggleAudio} style={{ fontSize: '0.75rem', padding: '0.6rem', background: '#111', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-              {audioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              AUDIO: {audioEnabled ? 'ON' : 'OFF'}
-            </button>
             <button onClick={printCaseFile} style={{ fontSize: '0.75rem', padding: '0.6rem', background: '#111', display: 'flex', justifyContent: 'center', gap: '8px' }}>
               <Printer size={16} /> EXPORT CASE FILE
             </button>
