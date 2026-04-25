@@ -282,7 +282,7 @@ export default function Chat() {
         <button onClick={() => setIsHistoryOpen(true)} className="icon-btn" aria-label="Open History">
           <Menu size={24} />
         </button>
-        <span className="mobile-title">AetherScan</span>
+        <span className="mobile-title">AI Paranormal Investigation- Bot</span>
         <button onClick={() => setIsToolsOpen(true)} className="icon-btn" aria-label="Open Tools">
           <MoreVertical size={24} />
         </button>
@@ -324,7 +324,7 @@ export default function Chat() {
           {messages.map((msg, index) => (
             <div key={index} className={`message ${msg.role}`}>
               <div className="message-header">
-                {msg.role === 'user' ? 'Investigator' : msg.role === 'error' ? 'System Error' : 'AetherScan AI'}
+                {msg.role === 'user' ? 'Investigator' : msg.role === 'error' ? 'System Error' : 'AI Paranormal Investigation- Bot'}
               </div>
               <div className="message-content">
                 {msg.image && (
@@ -340,7 +340,7 @@ export default function Chat() {
           ))}
           {isLoading && (
             <div className="message bot">
-              <div className="message-header">AetherScan AI</div>
+              <div className="message-header">AI Paranormal Investigation- Bot</div>
               <div className="message-content loading-indicator">
                  ANALYZING FREQUENCIES...
               </div>
