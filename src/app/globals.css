@@ -409,16 +409,7 @@ body::after {
   z-index: 0;
 }
 
-/* Mobile UI Elements (Hidden on Desktop by default) */
-.mobile-top-bar {
-  display: none;
-}
-.mobile-overlay {
-  display: none;
-}
-button.mobile-close-btn {
-  display: none;
-}
+/* App UI Elements */
 .icon-btn {
   background: transparent;
   border: none;
@@ -440,36 +431,35 @@ button.mobile-close-btn {
   letter-spacing: 1px;
 }
 
-/* Responsive Styles for Mobile */
-@media (max-width: 768px) {
-  .container {
-    padding: 1rem;
-    min-height: 100vh;
-  }
-  
-  header {
-    display: none; /* Hide top title on mobile to save space */
-  }
-  
-  .chat-layout {
-    flex-direction: column;
-    gap: 0;
-    position: relative;
-    height: 100%;
-  }
+/* Universal App Layout (Drawers and Top Bar) */
+.container {
+  padding: 1rem;
+  min-height: 100vh;
+}
 
-  /* Show mobile top bar */
-  .mobile-top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem;
-    background: var(--dark-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 12px 12px 0 0;
-    margin-bottom: -1px; /* overlap with chat-window border */
-    z-index: 20;
-  }
+header {
+  display: none; /* Hide top title to save space and use app bar instead */
+}
+
+.chat-layout {
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  height: 100%;
+}
+
+/* Show mobile top bar on all screens */
+.mobile-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: var(--dark-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 12px 12px 0 0;
+  margin-bottom: -1px; /* overlap with chat-window border */
+  z-index: 20;
+}
 
   .chat-window {
     border-radius: 0 0 12px 12px;
@@ -538,7 +528,6 @@ button.mobile-close-btn {
   button {
     padding: 0.6rem;
   }
-}
 
 /* Print Styles */
 @media print {
