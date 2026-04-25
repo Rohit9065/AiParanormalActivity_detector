@@ -416,7 +416,7 @@ body::after {
 .mobile-overlay {
   display: none;
 }
-.mobile-close-btn {
+button.mobile-close-btn {
   display: none;
 }
 .icon-btn {
@@ -515,7 +515,7 @@ body::after {
   }
   
   /* Show close buttons in drawers */
-  .mobile-close-btn {
+  button.mobile-close-btn {
     display: flex;
   }
 
