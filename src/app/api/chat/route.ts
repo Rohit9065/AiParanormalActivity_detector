@@ -49,11 +49,11 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ text: response.text });
-  } catch (error) {
-    console.error('API Error:', error);
-    return NextResponse.json(
-      { error: 'An error occurred while communicating with the supernatural ether.' },
-      { status: 500 }
-    );
-  }
+    } catch (error: any) {
+      console.error('API Error:', error);
+      return NextResponse.json(
+        { error: 'Backend Error: ' + (error.message || String(error)) },
+        { status: 500 }
+      );
+    }
 }

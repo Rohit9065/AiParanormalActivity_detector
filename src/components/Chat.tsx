@@ -243,11 +243,11 @@ export default function Chat() {
       
       removeImage();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       setMessages(prev => [...prev, { 
         role: 'error', 
-        content: 'SYSTEM FAILURE: Unable to establish connection to the ethereal plane.' 
+        content: `SYSTEM FAILURE: ${error.message || 'Unable to establish connection to the ethereal plane.'}` 
       }]);
     } finally {
       setIsLoading(false);
