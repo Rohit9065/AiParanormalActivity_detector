@@ -101,6 +101,7 @@ h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .history-list {
@@ -135,6 +136,8 @@ h1 {
   padding: 1rem;
   border-top: 1px solid var(--border-color);
   text-align: center;
+  flex-shrink: 0;
+  background: var(--dark-panel);
 }
 
 .clear-btn button {
