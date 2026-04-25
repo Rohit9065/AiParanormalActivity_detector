@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Terminal, Camera, MapPin, Printer, Volume2, VolumeX } from 'lucide-react';
+import { Send, Terminal, Camera, MapPin, Printer, Volume2, VolumeX, Menu, MoreVertical, X } from 'lucide-react';
 
 type Message = {
   role: 'user' | 'bot' | 'error';
@@ -54,6 +54,10 @@ export default function Chat() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [emfLevel, setEmfLevel] = useState(1);
   const [audioEnabled, setAudioEnabled] = useState(false);
+  
+  // Mobile drawer states
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -267,10 +271,30 @@ export default function Chat() {
 
   return (
     <div className="chat-layout">
+      {/* Mobile Top Bar */}
+      <div className="mobile-top-bar">
+        <button onClick={() => setIsHistoryOpen(true)} className="icon-btn" aria-label="Open History">
+          <Menu size={24} />
+        </button>
+        <span className="mobile-title">AetherScan</span>
+        <button onClick={() => setIsToolsOpen(true)} className="icon-btn" aria-label="Open Tools">
+          <MoreVertical size={24} />
+        </button>
+      </div>
+
+      {/* Mobile Overlays */}
+      <div 
+        className={`mobile-overlay ${(isHistoryOpen || isToolsOpen) ? 'active' : ''}`}
+        onClick={() => { setIsHistoryOpen(false); setIsToolsOpen(false); }}
+      />
+
       {/* Sidebar History */}
-      <div className="sidebar">
+      <div className={`sidebar ${isHistoryOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <span>Case Files</span>
+          <button className="mobile-close-btn icon-btn" onClick={() => setIsHistoryOpen(false)}>
+            <X size={20} />
+          </button>
         </div>
         <div className="history-list">
           {historyQueries.length === 0 ? (
@@ -385,9 +409,12 @@ export default function Chat() {
       </div>
 
       {/* Tools Sidebar */}
-      <div className="tools-sidebar">
+      <div className={`tools-sidebar ${isToolsOpen ? 'open' : ''}`}>
         <div className="tools-sidebar-header">
-          Investigation Tools
+          <span>Investigation Tools</span>
+          <button className="mobile-close-btn icon-btn" onClick={() => setIsToolsOpen(false)}>
+            <X size={20} />
+          </button>
         </div>
         <div className="tools-content">
           
