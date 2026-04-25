@@ -104,29 +104,34 @@ export default function Chat() {
   const playStaticBurst = () => {
     if (!audioEnabled || !audioCtxRef.current) return;
     
-    const bufferSize = audioCtxRef.current.sampleRate * 0.5;
-    const buffer = audioCtxRef.current.createBuffer(1, bufferSize, audioCtxRef.current.sampleRate);
-    const output = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1;
+    try {
+      const bufferSize = Math.floor(audioCtxRef.current.sampleRate * 0.5);
+      const buffer = audioCtxRef.current.createBuffer(1, bufferSize, audioCtxRef.current.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const whiteNoise = audioCtxRef.current.createBufferSource();
+      whiteNoise.buffer = buffer;
+      
+      const filter = audioCtxRef.current.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1000;
+      
+      const gainNode = audioCtxRef.current.createGain();
+      const now = audioCtxRef.current.currentTime;
+      gainNode.gain.setValueAtTime(0.2, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+      whiteNoise.connect(filter);
+      filter.connect(gainNode);
+      gainNode.connect(audioCtxRef.current.destination);
+      
+      whiteNoise.start(now);
+    } catch (error) {
+      console.warn('Audio burst failed to play:', error);
     }
-
-    const whiteNoise = audioCtxRef.current.createBufferSource();
-    whiteNoise.buffer = buffer;
-    
-    const filter = audioCtxRef.current.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = 1000;
-    
-    const gainNode = audioCtxRef.current.createGain();
-    gainNode.gain.setValueAtTime(0.2, audioCtxRef.current.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtxRef.current.currentTime + 0.5);
-
-    whiteNoise.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(audioCtxRef.current.destination);
-    
-    whiteNoise.start();
   };
 
   useEffect(() => {
