@@ -11,7 +11,10 @@ CRITICAL LANGUAGE RULE: You MUST match the user's language EXACTLY.
 - If the user asks in pure Hindi script, reply in pure Hindi script.
 Do NOT mix languages. Do NOT reply in Hinglish if the user asked in English.
 
-For ANY OTHER topic (e.g. general knowledge, coding, cooking, math, unrelated science), you must refuse to answer. When refusing, you MUST prepend "[ERROR]" to your response, and your response MUST be exactly: 'i only handle parnormal activity related question' (translate this error message to the exact language the user used). If an image is provided, analyze it closely for possible paranormal entities (orbs, apparitions, shadow figures) or logically debunk it.`;
+For ANY OTHER topic (e.g. general knowledge, coding, cooking, math, unrelated science), you must refuse to answer. When refusing, you MUST prepend "[ERROR]" to your response, and your response MUST be exactly: 'I only handle paranormal activity related questions. For example, you can ask me: "Are ghosts real?", "What is a poltergeist?", or "Why do I feel cold spots in my house?"' (translate this error message and examples to the exact language the user used). If an image is provided, analyze it closely for possible paranormal entities (orbs, apparitions, shadow figures) or logically debunk it.`;
+
+// Add a maximum limit for Vercel edge/serverless functions
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
@@ -32,8 +35,8 @@ export async function POST(req: Request) {
     ];
 
     if (image) {
-      const base64Data = image.split(',')[1] || image; 
-      const mimeType = image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || 'image/jpeg';
+      const base64Data = image.includes(',') ? image.split(',')[1] : image; 
+      const mimeType = image.match(/data:(.*?);/)?.[1] || 'image/jpeg';
       
       contents[0].parts.push({
         inlineData: {
@@ -44,7 +47,7 @@ export async function POST(req: Request) {
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-lite',
+      model: 'gemini-2.5-flash',
       contents: contents
     });
 

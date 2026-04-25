@@ -243,11 +243,10 @@ h1 {
 }
 
 .message {
-  max-width: 80%;
-  padding: 1rem;
-  border-radius: 8px;
-  line-height: 1.5;
-  font-size: 0.9rem;
+  max-width: 85%;
+  padding: 0.5rem 1rem;
+  line-height: 1.6;
+  font-size: 0.95rem;
   animation: fadeIn 0.3s ease-in-out;
 }
 
@@ -258,37 +257,36 @@ h1 {
 
 .message.user {
   align-self: flex-end;
-  background-color: var(--user-message-bg);
-  border: 1px solid #333;
-  color: #e0e0e0;
+  background-color: #2a2a2a;
+  border-radius: 1.5rem;
+  color: #fff;
 }
 
 .message.bot {
   align-self: flex-start;
-  background-color: var(--bot-message-bg);
-  border: 1px solid rgba(57, 255, 20, 0.2);
+  background-color: transparent;
+  border: none;
   color: #fff;
-  border-left: 4px solid var(--neon-green);
+  padding-left: 0;
 }
 
 .message.error {
   align-self: flex-start;
-  background-color: #3a1a1a;
-  border: 1px solid #ff3939;
-  color: #ff8888;
-  border-left: 4px solid #ff3939;
+  background-color: transparent;
+  color: #ff5555;
+  padding-left: 0;
 }
 
 .message-header {
   font-size: 0.8rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .message.user .message-header {
-  color: #888;
+  display: none; /* Hide 'Investigator' label for cleaner look */
 }
 
 .message.bot .message-header {
@@ -302,56 +300,75 @@ h1 {
 /* Input Area */
 .input-area {
   padding: 1rem;
-  background: #0a0a0a;
+  background: var(--dark-panel);
   border-top: 1px solid var(--border-color);
+}
+
+.input-box-wrapper {
   display: flex;
-  gap: 1rem;
-}
-
-input {
   flex: 1;
-  background: #151515;
+  background: #1e1e1e;
   border: 1px solid #333;
-  padding: 1rem;
-  border-radius: 8px;
-  color: white;
-  font-size: 0.9rem;
-  outline: none;
-  transition: all 0.2s;
-  font-family: inherit;
+  border-radius: 2rem;
+  padding: 0.4rem 0.5rem;
+  align-items: center;
+  transition: border-color 0.2s;
 }
 
-input:focus {
+.input-box-wrapper:focus-within {
   border-color: var(--neon-green);
-  box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.1);
 }
 
-button {
+.input-box-wrapper input {
+  flex: 1;
   background: transparent;
-  border: 1px solid var(--neon-green);
-  color: var(--neon-green);
-  padding: 0 2rem;
-  border-radius: 8px;
-  font-weight: bold;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  transition: all 0.2s;
+  border: none;
+  color: white;
+  font-size: 0.95rem;
+  outline: none;
+  padding: 0.5rem 0.5rem;
+  min-width: 0;
+}
+
+.input-box-wrapper button.send-btn {
+  background: var(--neon-green);
+  color: black;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-button:hover:not(:disabled) {
-  background: var(--neon-green);
-  color: black;
-  box-shadow: 0 0 15px rgba(57, 255, 20, 0.5);
+.input-box-wrapper button.send-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: scale(1.05);
 }
 
-button:disabled {
-  border-color: #444;
-  color: #444;
+.input-box-wrapper button.send-btn:disabled {
+  background: #333;
+  color: #666;
   cursor: not-allowed;
+  transform: scale(1);
+}
+
+.attach-btn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px 0 12px;
+  color: #888;
+  transition: color 0.2s;
+}
+.attach-btn:hover {
+  color: var(--neon-green);
 }
 
 .loading {

@@ -162,7 +162,18 @@ export default function Chat() {
 
   useEffect(() => {
     if (mounted) {
-      localStorage.setItem('paranormal_history', JSON.stringify(messages));
+      try {
+        // Strip images before saving to prevent localStorage QuotaExceededError
+        const historyToSave = messages.map(msg => {
+          if (msg.image) {
+            return { role: msg.role, content: msg.content };
+          }
+          return msg;
+        });
+        localStorage.setItem('paranormal_history', JSON.stringify(historyToSave));
+      } catch (e) {
+        console.error("Failed to save history", e);
+      }
     }
   }, [messages, mounted]);
 
@@ -381,36 +392,32 @@ export default function Chat() {
         )}
 
         <form onSubmit={handleSubmit} className="input-area">
-          <Terminal className="text-[#39ff14] mt-3 ml-2" size={20} color="#39ff14" style={{marginTop: '12px'}} />
-          
-          <input
-            type="file"
-            accept="image/*"
-            ref={fileInputRef}
-            onChange={handleImageUpload}
-            style={{ display: 'none' }}
-            id="evidence-upload"
-          />
-          <label htmlFor="evidence-upload" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 10px', color: '#888', transition: 'color 0.2s' }}>
-            <Camera size={24} />
-          </label>
+          <div className="input-box-wrapper">
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+              id="evidence-upload"
+            />
+            <label htmlFor="evidence-upload" className="attach-btn">
+              <Camera size={20} />
+            </label>
 
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Enter investigation query or attach evidence..."
-            disabled={isLoading}
-            autoComplete="off"
-          />
-          <button type="submit" disabled={isLoading || (!input.trim() && !selectedImage)} style={{ display: 'flex', gap: '0.5rem' }}>
-            {isLoading ? <div className="loading" /> : (
-              <>
-                <Send size={18} />
-                ASK
-              </>
-            )}
-          </button>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Enter investigation query or attach evidence..."
+              disabled={isLoading}
+              autoComplete="off"
+            />
+            
+            <button type="submit" className="send-btn" disabled={isLoading || (!input.trim() && !selectedImage)}>
+              {isLoading ? <div className="loading" style={{ width: '16px', height: '16px', borderWidth: '2px' }} /> : <Send size={16} />}
+            </button>
+          </div>
         </form>
       </div>
 
