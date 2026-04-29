@@ -263,46 +263,80 @@ export default function Chat() {
     setMessages(prev => [...prev, newMsg]);
     setIsLoading(true);
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, newMsg],
-          image: selectedImage
-        }),
-      });
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const attemptFetch = async (): Promise<void> => {
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [...messages, newMsg],
+            image: selectedImage
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch response');
+        if (!response.ok) {
+          // If 503 error, retry
+          if (response.status === 503 && retryCount < maxRetries) {
+            retryCount++;
+            const waitTime = 2000 * Math.pow(2, retryCount - 1); // Exponential backoff
+            console.log(`Retrying in ${waitTime}ms... (Attempt ${retryCount}/${maxRetries})`);
+            
+            // Show status message
+            setMessages(prev => [...prev, {
+              role: 'bot',
+              content: `SYSTEM STATUS: Retrying connection... Attempt ${retryCount}/${maxRetries}. Please wait.`
+            }]);
+            
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            return attemptFetch();
+          }
+          
+          throw new Error(data.error || 'Failed to fetch response');
+        }
+
+        let botText = data.text;
+        const isError = botText.includes('[ERROR]');
+        
+        if (isError) {
+          botText = botText.replace('[ERROR]', '').trim();
+        }
+        
+        playStaticBurst();
+        setMessages(prev => [...prev, { 
+          role: isError ? 'error' : 'bot', 
+          content: botText 
+        }]);
+        
+        removeImage();
+
+      } catch (error: any) {
+        console.error(error);
+        const errorMsg = error.message || 'Unable to establish connection to the ethereal plane.';
+        
+        // Provide helpful retry instructions
+        let fullErrorMsg = `SYSTEM FAILURE: ${errorMsg}`;
+        
+        if (errorMsg.includes('SERVICE TEMPORARILY UNAVAILABLE') || errorMsg.includes('high demand')) {
+          fullErrorMsg += '\n\nTIP: The API is temporarily overloaded. Try again in 30-60 seconds.';
+        } else if (errorMsg.includes('RATE LIMIT')) {
+          fullErrorMsg += '\n\nTIP: Wait 60 seconds before asking another question.';
+        }
+        
+        setMessages(prev => [...prev, { 
+          role: 'error', 
+          content: fullErrorMsg
+        }]);
+      } finally {
+        setIsLoading(false);
       }
-
-      let botText = data.text;
-      const isError = botText.includes('[ERROR]');
-      
-      if (isError) {
-        botText = botText.replace('[ERROR]', '').trim();
-      }
-      
-      playStaticBurst();
-      setMessages(prev => [...prev, { 
-        role: isError ? 'error' : 'bot', 
-        content: botText 
-      }]);
-      
-      removeImage();
-
-    } catch (error: any) {
-      console.error(error);
-      setMessages(prev => [...prev, { 
-        role: 'error', 
-        content: `SYSTEM FAILURE: ${error.message || 'Unable to establish connection to the ethereal plane.'}` 
-      }]);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    
+    await attemptFetch();
   };
 
   const scanLocalHauntings = () => {

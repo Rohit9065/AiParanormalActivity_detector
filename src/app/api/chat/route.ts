@@ -16,6 +16,45 @@ For ANY OTHER topic (e.g. general knowledge, coding, cooking, math, unrelated sc
 // Add a maximum limit for Vercel edge/serverless functions
 export const maxDuration = 60;
 
+// Retry logic for API calls
+async function callGeminiWithRetry(
+  ai: any,
+  contents: any,
+  maxRetries: number = 3,
+  delayMs: number = 2000
+): Promise<any> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: contents
+      });
+      return response;
+    } catch (error: any) {
+      const errorStr = error.message || String(error);
+      
+      // Retry on 503 (Service Unavailable) and some other temporary errors
+      if (
+        errorStr.includes('503') || 
+        errorStr.includes('UNAVAILABLE') ||
+        errorStr.includes('DEADLINE_EXCEEDED') ||
+        errorStr.includes('INTERNAL')
+      ) {
+        if (attempt < maxRetries) {
+          // Exponential backoff: 2s, 4s, 8s
+          const waitTime = delayMs * Math.pow(2, attempt - 1);
+          console.log(`Retry attempt ${attempt}/${maxRetries} after ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+      }
+      
+      // If not a retryable error or all retries exhausted, throw
+      throw error;
+    }
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { messages, image } = await req.json();
@@ -46,15 +85,22 @@ export async function POST(req: Request) {
       });
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: contents
-    });
+    const response = await callGeminiWithRetry(ai, contents);
 
     return NextResponse.json({ text: response.text });
     } catch (error: any) {
       console.error('API Error:', error);
       const errorStr = error.message || String(error);
+      
+      // Handle 503 Service Unavailable
+      if (errorStr.includes('503') || errorStr.includes('UNAVAILABLE')) {
+        return NextResponse.json(
+          { error: 'SERVICE TEMPORARILY UNAVAILABLE: The Gemini API is currently experiencing high demand. This usually resolves within a few minutes. Please try again in 30-60 seconds.' },
+          { status: 503 }
+        );
+      }
+      
+      // Handle rate limiting and quota errors
       if (errorStr.includes('429') || errorStr.includes('quota') || errorStr.includes('RESOURCE_EXHAUSTED')) {
         return NextResponse.json(
           { error: 'RATE LIMIT REACHED: The ethereal frequencies are jammed! You are asking questions too quickly. Please wait 60 seconds and try again.' },
