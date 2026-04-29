@@ -247,7 +247,7 @@ h1 {
 
 .message {
   max-width: 85%;
-  padding: 0.5rem 1rem;
+  padding: 0.8rem 0;
   line-height: 1.6;
   font-size: 0.95rem;
   animation: fadeIn 0.3s ease-in-out;
@@ -260,9 +260,10 @@ h1 {
 
 .message.user {
   align-self: flex-end;
-  background-color: #2a2a2a;
+  background-color: transparent;
   border-radius: 1.5rem;
   color: #fff;
+  padding: 0.5rem;
 }
 
 .message.bot {
@@ -270,19 +271,19 @@ h1 {
   background-color: transparent;
   border: none;
   color: #fff;
-  padding-left: 0;
+  padding: 0.5rem 0;
 }
 
 .message.error {
   align-self: flex-start;
   background-color: transparent;
   color: #ff5555;
-  padding-left: 0;
+  padding: 0.5rem 0;
 }
 
 .message-header {
   font-size: 0.8rem;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.5rem;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -298,6 +299,89 @@ h1 {
 
 .message.error .message-header {
   color: #ff3939;
+}
+
+/* Message Content Styling */
+.message-content {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  line-height: 1.8;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+  text-align: left;
+}
+
+.message.bot .message-content {
+  background: #1a2a1a;
+  border-left: 3px solid var(--neon-green);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 0.3rem;
+  line-height: 1.9;
+}
+
+.message.user .message-content {
+  background: #2a3a3a;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  margin-top: 0.3rem;
+  width: fit-content;
+}
+
+.message.error .message-content {
+  color: #ff5555;
+  background: rgba(255, 85, 85, 0.1);
+  border-left: 3px solid #ff5555;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin-top: 0.3rem;
+}
+
+/* Better text rendering */
+.message-content strong {
+  color: var(--neon-green);
+  font-weight: 600;
+}
+
+.message-content em {
+  color: #aaa;
+  font-style: italic;
+}
+
+/* List formatting within messages */
+.message-content ul,
+.message-content ol {
+  margin: 0.5rem 0 0.5rem 1.5rem;
+  padding: 0;
+}
+
+.message-content li {
+  margin: 0.3rem 0;
+  list-style-position: outside;
+}
+
+/* Code/monospace text in messages */
+.message-content code {
+  background: rgba(0, 0, 0, 0.3);
+  color: #22ff22;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-family: 'Consolas', monospace;
+  font-size: 0.9rem;
+}
+
+/* Paragraph spacing */
+.message-content > p {
+  margin: 0.3rem 0;
+}
+
+.message-content > p:first-child {
+  margin-top: 0;
+}
+
+.message-content > p:last-child {
+  margin-bottom: 0;
 }
 
 /* Input Area */

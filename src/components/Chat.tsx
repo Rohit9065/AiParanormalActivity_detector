@@ -43,7 +43,47 @@ const GlitchText = ({ text }: { text: string }) => {
     };
   }, [text]);
 
-  return <span>{displayedText}</span>;
+  return <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{displayedText}</span>;
+};
+
+// Formatted Text Component
+const FormattedText = ({ text }: { text: string }) => {
+  // Split text into paragraphs
+  const paragraphs = text.split('\n\n');
+  
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+      {paragraphs.map((para, idx) => {
+        // Check if this paragraph is a list
+        const lines = para.split('\n');
+        const isList = lines.some(line => line.trim().match(/^[-•*]\s|^\d+\.\s/));
+        
+        if (isList) {
+          return (
+            <ul key={idx} style={{ margin: '0.3rem 0', paddingLeft: '1.5rem' }}>
+              {lines.map((line, lineIdx) => {
+                const match = line.trim().match(/^[-•*]\s(.+)$|^\d+\.\s(.+)$/);
+                if (match) {
+                  return (
+                    <li key={lineIdx} style={{ margin: '0.2rem 0', lineHeight: '1.6' }}>
+                      {match[1] || match[2]}
+                    </li>
+                  );
+                }
+                return null;
+              })}
+            </ul>
+          );
+        }
+        
+        return (
+          <p key={idx} style={{ margin: 0, lineHeight: '1.8' }}>
+            {para}
+          </p>
+        );
+      })}
+    </div>
+  );
 };
 
 export default function Chat() {
@@ -343,8 +383,12 @@ export default function Chat() {
                 )}
                 {msg.role === 'bot' && index > 0 ? (
                   <GlitchText text={msg.content} />
+                ) : msg.role === 'user' ? (
+                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {msg.content}
+                  </div>
                 ) : (
-                  msg.content
+                  <FormattedText text={msg.content} />
                 )}
               </div>
             </div>
