@@ -176,7 +176,7 @@ export async function POST(req: Request) {
     let contentPayload: any = latestMessage.content;
 
     if (latestMessage.image) {
-      model = 'llama-3.2-11b-vision-preview';
+      model = 'llama-3.2-90b-vision-preview';
       contentPayload = [
         { type: "text", text: latestMessage.content },
         { type: "image_url", image_url: { url: latestMessage.image } }
