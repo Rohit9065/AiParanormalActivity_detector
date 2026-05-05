@@ -377,20 +377,53 @@ export default function Chat() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUrl = reader.result as string;
-        setSelectedImage(dataUrl);
-        setIsExtracting(true);
-        setExtractedText('');
-        Tesseract.recognize(
-          dataUrl,
-          'eng'
-        ).then(({ data: { text } }) => {
-          setExtractedText(text.trim());
-          setIsExtracting(false);
-        }).catch(err => {
-          console.error(err);
-          setExtractedText('[Error extracting text from image]');
-          setIsExtracting(false);
-        });
+        
+        // Compress image using canvas
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          const MAX_SIZE = 800;
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            
+            setSelectedImage(compressedDataUrl);
+            setIsExtracting(true);
+            setExtractedText('');
+            
+            Tesseract.recognize(
+              compressedDataUrl,
+              'eng'
+            ).then(({ data: { text } }) => {
+              setExtractedText(text.trim());
+              setIsExtracting(false);
+            }).catch(err => {
+              console.error(err);
+              setExtractedText('[Error extracting text from image]');
+              setIsExtracting(false);
+            });
+          }
+        };
+        img.src = dataUrl;
       };
       reader.readAsDataURL(file);
     }

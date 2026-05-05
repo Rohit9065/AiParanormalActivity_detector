@@ -202,7 +202,7 @@ export async function POST(req: Request) {
       if (fallbackResponse) {
         // If we have a fallback response, return it instead of an error
         return NextResponse.json({ 
-          text: fallbackResponse + '\n\n[Note: Using cached knowledge - the AI API is temporarily unavailable. For more detailed answers, please try again later.]'
+          text: fallbackResponse + `\n\n[Note: Using cached knowledge - the AI API is temporarily unavailable. Error details: ${errorStr}]`
         });
       }
       

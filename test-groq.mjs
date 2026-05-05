@@ -1,6 +1,7 @@
-import 'dotenv/config';
-
-const apiKey = process.env.GROQ_API_KEY;
+import fs from 'fs';
+const envFile = fs.readFileSync('.env.local', 'utf8');
+const match = envFile.match(/GROQ_API_KEY=(.*)/);
+const apiKey = match ? match[1].trim() : null;
 
 if (!apiKey) {
   console.error('No GROQ_API_KEY found');
