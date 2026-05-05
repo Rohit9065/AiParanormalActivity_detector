@@ -201,6 +201,11 @@ export async function POST(req: Request) {
 }
 
 function getFallbackResponse(userQuery: string): string | null {
+  // Skip fallback for location scans to ensure real API errors are shown instead of generic definitions
+  if (userQuery.includes('scan area') || userQuery.includes('local paranormal history')) {
+    return null;
+  }
+
   // Check if the query matches any of our fallback responses
   for (const [keyword, response] of Object.entries(FALLBACK_RESPONSES)) {
     if (userQuery.includes(keyword)) {
