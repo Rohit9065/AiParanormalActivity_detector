@@ -9,6 +9,13 @@ type Message = {
   image?: string;
 };
 
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+  updatedAt: number;
+};
+
 // Custom component for Glitch Text
 const GlitchText = ({ text }: { text: string }) => {
   const [displayedText, setDisplayedText] = useState('');
@@ -89,7 +96,9 @@ const FormattedText = ({ text }: { text: string }) => {
 export default function Chat() {
   const defaultMessage: Message = { role: 'bot', content: 'SYSTEM ONLINE. CALIBRATED FOR PARANORMAL ENTITIES ONLY. AWAITING INPUT.' };
   const [messages, setMessages] = useState<Message[]>([defaultMessage]);
-  const [savedHistory, setSavedHistory] = useState<Message[] | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const currentSessionIdRef = useRef<string | null>(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -189,12 +198,31 @@ export default function Chat() {
   }, [isLoading]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('paranormal_history');
+    const saved = localStorage.getItem('paranormal_sessions');
     if (saved) {
       try {
-        setSavedHistory(JSON.parse(saved));
+        setSessions(JSON.parse(saved));
       } catch (e) {
-        console.error("Failed to parse history", e);
+        console.error("Failed to parse sessions", e);
+      }
+    } else {
+      const oldSaved = localStorage.getItem('paranormal_history');
+      if (oldSaved) {
+        try {
+          const parsedOld = JSON.parse(oldSaved);
+          if (parsedOld && parsedOld.length > 0) {
+            const firstUserMsg = parsedOld.find((m: any) => m.role === 'user');
+            const title = firstUserMsg ? (firstUserMsg.content.length > 30 ? firstUserMsg.content.substring(0, 30) + '...' : firstUserMsg.content) : 'Previous Session';
+            const newSession = {
+              id: Date.now().toString(),
+              title: title || 'Previous Session',
+              messages: parsedOld,
+              updatedAt: Date.now()
+            };
+            setSessions([newSession]);
+            localStorage.setItem('paranormal_sessions', JSON.stringify([newSession]));
+          }
+        } catch(e) {}
       }
     }
     setMessages([defaultMessage]);
@@ -216,8 +244,50 @@ export default function Chat() {
         }
         return msg;
       });
-      localStorage.setItem('paranormal_history', JSON.stringify(historyToSave));
-      setSavedHistory(historyToSave);
+      
+      setSessions(prevSessions => {
+        let updatedSessions = [...prevSessions];
+        const firstUserMsg = messages.find(m => m.role === 'user');
+        let title = "New Investigation";
+        if (firstUserMsg) {
+          title = firstUserMsg.content ? (firstUserMsg.content.length > 30 ? firstUserMsg.content.substring(0, 30) + '...' : firstUserMsg.content) : "Image Analysis";
+        }
+
+        const sessionId = currentSessionIdRef.current;
+        
+        if (sessionId) {
+          const index = updatedSessions.findIndex(s => s.id === sessionId);
+          if (index !== -1) {
+            updatedSessions[index] = {
+              ...updatedSessions[index],
+              title,
+              messages: historyToSave,
+              updatedAt: Date.now()
+            };
+          } else {
+            updatedSessions.unshift({
+              id: sessionId,
+              title,
+              messages: historyToSave,
+              updatedAt: Date.now()
+            });
+          }
+        } else {
+          const newId = Date.now().toString();
+          currentSessionIdRef.current = newId;
+          setCurrentSessionId(newId);
+          updatedSessions.unshift({
+            id: newId,
+            title,
+            messages: historyToSave,
+            updatedAt: Date.now()
+          });
+        }
+        
+        updatedSessions = updatedSessions.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 10);
+        localStorage.setItem('paranormal_sessions', JSON.stringify(updatedSessions));
+        return updatedSessions;
+      });
     } catch (e) {
       console.error("Failed to save history", e);
     }
@@ -233,15 +303,25 @@ export default function Chat() {
 
   const clearHistory = () => {
     setMessages([defaultMessage]);
-    setSavedHistory(null);
+    setCurrentSessionId(null);
+    currentSessionIdRef.current = null;
+    setSessions([]);
+    localStorage.removeItem('paranormal_sessions');
     localStorage.removeItem('paranormal_history');
   };
 
-  const restoreSavedHistory = () => {
-    if (savedHistory) {
-      setMessages(savedHistory);
-      setIsHistoryOpen(false);
-    }
+  const loadSession = (session: ChatSession) => {
+    setMessages(session.messages);
+    setCurrentSessionId(session.id);
+    currentSessionIdRef.current = session.id;
+    setIsHistoryOpen(false);
+  };
+
+  const startNewSession = () => {
+    setMessages([defaultMessage]);
+    setCurrentSessionId(null);
+    currentSessionIdRef.current = null;
+    setIsHistoryOpen(false);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -363,13 +443,29 @@ export default function Chat() {
       return;
     }
 
+    setIsLoading(true);
+
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
-        handleSubmit(undefined, `Scan area at latitude ${latitude.toFixed(5)}, longitude ${longitude.toFixed(5)}. Tell me about local paranormal history, legends, or famous hauntings here.`);
+        try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+          const data = await response.json();
+          let locationName = "your area";
+          if (data && data.address) {
+            const addr = data.address;
+            locationName = addr.city || addr.town || addr.village || addr.suburb || addr.county || addr.state || "your area";
+          }
+          setIsLoading(false);
+          handleSubmit(undefined, `Scan area: ${locationName} (Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}). Tell me about local paranormal history, legends, or famous hauntings in ${locationName}.`);
+        } catch (error) {
+          setIsLoading(false);
+          handleSubmit(undefined, `Scan area at latitude ${latitude.toFixed(5)}, longitude ${longitude.toFixed(5)}. Tell me about local paranormal history, legends, or famous hauntings here.`);
+        }
       },
       (error) => {
         console.warn('Geolocation failed:', error);
+        setIsLoading(false);
         const loc = window.prompt("Unable to access your current location. Enter your city or region to scan for local hauntings:");
         if (loc) {
           handleSubmit(undefined, `Scan area: ${loc}. Tell me about local paranormal history, legends, or famous hauntings here.`);
@@ -390,11 +486,6 @@ export default function Chat() {
   ];
 
   if (!mounted) return <div className="chat-layout"></div>;
-
-  const historyQueries = messages.filter(m => m.role === 'user');
-  const savedHistoryQueries = savedHistory?.filter(m => m.role === 'user') ?? [];
-  const displayedHistoryQueries = historyQueries.length > 0 ? historyQueries : savedHistoryQueries;
-  const usingSavedHistory = historyQueries.length === 0 && savedHistoryQueries.length > 0;
 
   return (
     <div className="chat-layout">
@@ -418,42 +509,46 @@ export default function Chat() {
       {/* Sidebar History */}
       <div className={`sidebar ${isHistoryOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <span>{usingSavedHistory ? 'Previous Session' : 'Case Files'}</span>
+          <span>Case Files</span>
           <button className="mobile-close-btn icon-btn" onClick={() => setIsHistoryOpen(false)}>
             <X size={20} />
           </button>
         </div>
-        <div className="history-list">
-          {displayedHistoryQueries.length === 0 ? (
+        
+        <div style={{ padding: '1rem', paddingBottom: '0' }}>
+          <button
+            onClick={startNewSession}
+            style={{ width: '100%', fontSize: '0.9rem', padding: '0.6rem', background: 'var(--neon-green)', border: 'none', color: '#000', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px' }}
+          >
+            + NEW INVESTIGATION
+          </button>
+        </div>
+
+        <div className="history-list" style={{ marginTop: '1rem' }}>
+          {sessions.length === 0 ? (
             <div style={{ color: '#555', fontSize: '0.8rem', textAlign: 'center', marginTop: '2rem' }}>
-              {savedHistory ? 'Previous session available. Click RESTORE HISTORY to load it.' : 'No previous queries found.'}
+              No previous queries found.
             </div>
           ) : (
-            displayedHistoryQueries.map((msg, i) => (
+            sessions.map((session) => (
               <div
-                key={i}
-                className="history-item"
-                title={msg.content}
-                onClick={usingSavedHistory ? restoreSavedHistory : undefined}
-                style={{ cursor: usingSavedHistory ? 'pointer' : 'default' }}
+                key={session.id}
+                className={`history-item ${currentSessionId === session.id ? 'active-session' : ''}`}
+                onClick={() => loadSession(session)}
+                style={{ cursor: 'pointer', padding: '0.8rem', borderBottom: '1px solid #222', backgroundColor: currentSessionId === session.id ? '#1a1a1a' : 'transparent', borderLeft: currentSessionId === session.id ? '3px solid var(--neon-green)' : '3px solid transparent' }}
               >
-                {msg.content || "[Image attached]"}
+                <div style={{ fontSize: '0.9rem', color: '#eee', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {session.title}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#666' }}>
+                  {new Date(session.updatedAt).toLocaleString()}
+                </div>
               </div>
             ))
           )}
         </div>
-        {savedHistory && (
-          <div style={{ padding: '0 1rem', marginTop: '0.75rem' }}>
-            <button
-              onClick={restoreSavedHistory}
-              style={{ width: '100%', fontSize: '0.8rem', padding: '0.6rem', background: '#111', border: '1px solid var(--neon-green)', color: 'var(--neon-green)', cursor: 'pointer' }}
-            >
-              RESTORE PREVIOUS SESSION
-            </button>
-          </div>
-        )}
-        <div className="clear-btn">
-          <button onClick={clearHistory} disabled={!savedHistory && historyQueries.length === 0}>CLEAR HISTORY</button>
+        <div className="clear-btn" style={{ marginTop: 'auto' }}>
+          <button onClick={clearHistory} disabled={sessions.length === 0}>CLEAR ALL HISTORY</button>
         </div>
       </div>
 
