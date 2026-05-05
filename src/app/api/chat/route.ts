@@ -1,7 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Weather API integration
 async function getWeatherData(city: string = 'London') {
@@ -71,28 +68,48 @@ For ANY OTHER topic (e.g. general knowledge, coding, cooking, math, unrelated sc
 export const maxDuration = 60;
 
 // Retry logic for API calls
-async function callGeminiWithRetry(
-  ai: any,
-  contents: any,
+async function callGroqWithRetry(
+  messages: any[],
+  model: string,
   maxRetries: number = 3,
   delayMs: number = 2000
 ): Promise<any> {
+  const groqApiKey = process.env.GROQ_API_KEY;
+  if (!groqApiKey) {
+    throw new Error('GROQ_API_KEY environment variable is not set.');
+  }
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: contents
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${groqApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: messages,
+          temperature: 0.7,
+        })
       });
-      return response;
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || `Groq API Error: ${response.status} ${response.statusText}`);
+      }
+
+      return data.choices[0].message.content;
     } catch (error: any) {
       const errorStr = error.message || String(error);
       
-      // Retry on 503 (Service Unavailable) and some other temporary errors
+      // Retry on 503, 429, or network errors
       if (
         errorStr.includes('503') || 
-        errorStr.includes('UNAVAILABLE') ||
-        errorStr.includes('DEADLINE_EXCEEDED') ||
-        errorStr.includes('INTERNAL')
+        errorStr.includes('429') ||
+        errorStr.includes('fetch') ||
+        errorStr.includes('network')
       ) {
         if (attempt < maxRetries) {
           // Exponential backoff: 2s, 4s, 8s
@@ -150,29 +167,38 @@ export async function POST(req: Request) {
       }
     }
 
-    const contents: any[] = [
-      { role: 'user', parts: [{ text: SYSTEM_INSTRUCTION + weatherContext + '\n\nUser Query: ' + latestMessage.content }] }
+    let groqMessages: any[] = [
+      { role: 'system', content: SYSTEM_INSTRUCTION + weatherContext }
     ];
 
+    let model = 'llama3-70b-8192';
+
     if (image) {
-      const base64Data = image.includes(',') ? image.split(',')[1] : image; 
+      model = 'llama-3.2-11b-vision-preview'; // Use a vision model for Groq
       const mimeType = image.match(/data:(.*?);/)?.[1] || 'image/jpeg';
-      
-      contents[0].parts.push({
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType
-        }
+      const base64Data = image.includes(',') ? image : `data:${mimeType};base64,${image}`;
+
+      groqMessages.push({
+        role: 'user',
+        content: [
+          { type: 'text', text: latestMessage.content },
+          { type: 'image_url', image_url: { url: base64Data } }
+        ]
+      });
+    } else {
+      groqMessages.push({
+        role: 'user',
+        content: latestMessage.content
       });
     }
 
-    const response = await callGeminiWithRetry(ai, contents);
+    const responseText = await callGroqWithRetry(groqMessages, model);
 
-    return NextResponse.json({ text: response.text });
+    return NextResponse.json({ text: responseText });
     } catch (error: any) {
       console.error('API Error:', error);
       const errorStr = error.message || String(error);
-      const userQuery = latestMessage.content.toLowerCase();
+      const userQuery = latestMessage?.content?.toLowerCase() || '';
       
       // Try to provide fallback response if API fails
       const fallbackResponse = getFallbackResponse(userQuery);
@@ -187,7 +213,7 @@ export async function POST(req: Request) {
       // Handle 503 Service Unavailable
       if (errorStr.includes('503') || errorStr.includes('UNAVAILABLE')) {
         return NextResponse.json(
-          { error: 'SERVICE TEMPORARILY UNAVAILABLE: The Gemini API is currently experiencing high demand. This usually resolves within a few minutes. Please try again in 30-60 seconds.' },
+          { error: 'SERVICE TEMPORARILY UNAVAILABLE: The AI API is currently experiencing high demand. This usually resolves within a few minutes. Please try again in 30-60 seconds.' },
           { status: 503 }
         );
       }
