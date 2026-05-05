@@ -173,17 +173,10 @@ export async function POST(req: Request) {
 
     let model = 'llama-3.3-70b-versatile';
 
+    // Groq currently does not support vision models
     if (image) {
-      model = 'llama-3.2-11b-vision-preview'; // Use a vision model for Groq
-      const mimeType = image.match(/data:(.*?);/)?.[1] || 'image/jpeg';
-      const base64Data = image.includes(',') ? image : `data:${mimeType};base64,${image}`;
-
-      groqMessages.push({
-        role: 'user',
-        content: [
-          { type: 'text', text: latestMessage.content },
-          { type: 'image_url', image_url: { url: base64Data } }
-        ]
+      return NextResponse.json({ 
+        text: "[SYSTEM NOTIFICATION] My visual sensors are currently offline. The Groq API does not support image analysis at this time. Please describe the image or ask your question in text." 
       });
     } else {
       groqMessages.push({
