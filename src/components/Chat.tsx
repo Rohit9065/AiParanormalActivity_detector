@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Terminal, Camera, MapPin, Printer, Volume2, VolumeX, Menu, MoreVertical, X } from 'lucide-react';
+import { Send, Terminal, Camera, MapPin, Printer, Volume2, VolumeX, Menu, MoreVertical, X, Mic } from 'lucide-react';
+import Tesseract from 'tesseract.js';
 
 type Message = {
   role: 'user' | 'bot' | 'error';
@@ -103,12 +104,58 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [extractedText, setExtractedText] = useState<string>('');
+  const [isExtracting, setIsExtracting] = useState(false);
   const [emfLevel, setEmfLevel] = useState(1);
   const [audioEnabled, setAudioEnabled] = useState(false);
   
   // Mobile drawer states
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  
+  // Voice Recognition
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // @ts-ignore
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setInput(prev => prev + (prev ? ' ' : '') + transcript);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error("Speech recognition error", event.error);
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+      }
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current?.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -329,7 +376,21 @@ export default function Chat() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
+        const dataUrl = reader.result as string;
+        setSelectedImage(dataUrl);
+        setIsExtracting(true);
+        setExtractedText('');
+        Tesseract.recognize(
+          dataUrl,
+          'eng'
+        ).then(({ data: { text } }) => {
+          setExtractedText(text.trim());
+          setIsExtracting(false);
+        }).catch(err => {
+          console.error(err);
+          setExtractedText('[Error extracting text from image]');
+          setIsExtracting(false);
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -337,15 +398,20 @@ export default function Chat() {
 
   const removeImage = () => {
     setSelectedImage(null);
+    setExtractedText('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubmit = async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
     
-    const queryToUse = customQuery || input;
+    let queryToUse = customQuery || input;
+    if (extractedText && !customQuery) {
+      queryToUse += `\n[EVIDENCE UPLOADED - EXTRACTED TEXT: "${extractedText}"]`;
+    }
+    
     if (!queryToUse.trim() && !selectedImage) return;
-    if (isLoading) return;
+    if (isLoading || isExtracting) return;
 
     const userMessage = queryToUse.trim();
     if (!customQuery) setInput('');
@@ -363,12 +429,12 @@ export default function Chat() {
     
     const attemptFetch = async (): Promise<void> => {
       try {
+        const messagesToSend = [...messages, newMsg].map(m => ({ role: m.role, content: m.content }));
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            messages: [...messages, newMsg],
-            image: selectedImage
+            messages: messagesToSend
           }),
         });
 
@@ -449,7 +515,7 @@ export default function Chat() {
       async (position) => {
         const { latitude, longitude } = position.coords;
         try {
-          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`);
           const data = await response.json();
           let locationName = "your area";
           if (data && data.address) {
@@ -611,9 +677,16 @@ export default function Chat() {
         </div>
 
         {selectedImage && (
-          <div style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
              <span style={{ fontSize: '0.8rem', color: 'var(--neon-green)' }}>EVIDENCE LOADED</span>
              <img src={selectedImage} alt="preview" style={{ height: '40px', borderRadius: '4px', border: '1px solid #444' }} />
+             {isExtracting ? (
+               <span style={{ fontSize: '0.7rem', color: '#aaa' }}>Scanning for text...</span>
+             ) : extractedText ? (
+               <span style={{ fontSize: '0.7rem', color: '#aaa', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                 "{extractedText}"
+               </span>
+             ) : null}
              <button onClick={removeImage} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', border: '1px solid #ff3939', color: '#ff3939', background: 'transparent' }}>REMOVE</button>
           </div>
         )}
@@ -628,9 +701,17 @@ export default function Chat() {
               style={{ display: 'none' }}
               id="evidence-upload"
             />
-            <label htmlFor="evidence-upload" className="attach-btn">
+            <label htmlFor="evidence-upload" className="attach-btn" title="Upload Image for OCR">
               <Camera size={20} />
             </label>
+            <button 
+              type="button" 
+              onClick={toggleListening} 
+              title="Voice Recognition"
+              style={{ color: isListening ? '#ff3939' : 'var(--neon-green)', border: 'none', background: 'transparent', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Mic size={20} />
+            </button>
 
             <input
               type="text"

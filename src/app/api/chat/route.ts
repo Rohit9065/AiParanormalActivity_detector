@@ -59,10 +59,10 @@ const SYSTEM_INSTRUCTION = `You are a specialized AI Paranormal Investigator Bot
 CRITICAL LANGUAGE RULE: You MUST match the user's language EXACTLY. 
 - If the user asks the question in English, you MUST reply ONLY in English. 
 - If the user asks in Hinglish (Hindi written in English letters), you MUST reply ONLY in Hinglish. 
-- If the user asks in pure Hindi script, reply in pure Hindi script.
+- Do NOT reply in pure Hindi script under any circumstances. Always use English or Hinglish.
 Do NOT mix languages. Do NOT reply in Hinglish if the user asked in English.
 
-For ANY OTHER topic (e.g. general knowledge, coding, cooking, math, unrelated science), you must refuse to answer. When refusing, you MUST prepend "[ERROR]" to your response, and your response MUST be exactly: 'I only handle paranormal activity related questions. For example, you can ask me: "Are ghosts real?", "What is a poltergeist?", or "Why do I feel cold spots in my house?"' (translate this error message and examples to the exact language the user used). If an image is provided, analyze it closely for possible paranormal entities (orbs, apparitions, shadow figures) or logically debunk it.`;
+For ANY OTHER topic (e.g. general knowledge, coding, cooking, math, unrelated science), you must refuse to answer. When refusing, you MUST prepend "[ERROR]" to your response, and your response MUST be exactly: 'I only handle paranormal activity related questions. For example, you can ask me: "Are ghosts real?", "What is a poltergeist?", or "Why do I feel cold spots in my house?"' (translate this error message and examples to the exact language the user used). If OCR extracted text from evidence is provided, analyze that text for paranormal relevance.`;
 
 // Add a maximum limit for Vercel edge/serverless functions
 export const maxDuration = 60;
@@ -173,17 +173,10 @@ export async function POST(req: Request) {
 
     let model = 'llama-3.3-70b-versatile';
 
-    // Groq currently does not support vision models
-    if (image) {
-      return NextResponse.json({ 
-        text: "[SYSTEM NOTIFICATION] My visual sensors are currently offline. The Groq API does not support image analysis at this time. Please describe the image or ask your question in text." 
-      });
-    } else {
-      groqMessages.push({
-        role: 'user',
-        content: latestMessage.content
-      });
-    }
+    groqMessages.push({
+      role: 'user',
+      content: latestMessage.content
+    });
 
     const responseText = await callGroqWithRetry(groqMessages, model);
 
