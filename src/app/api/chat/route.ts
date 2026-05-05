@@ -171,7 +171,7 @@ export async function POST(req: Request) {
       { role: 'system', content: SYSTEM_INSTRUCTION + weatherContext }
     ];
 
-    let model = 'llama3-70b-8192';
+    let model = 'llama-3.3-70b-versatile';
 
     if (image) {
       model = 'llama-3.2-11b-vision-preview'; // Use a vision model for Groq
