@@ -340,10 +340,28 @@ export default function Chat() {
   };
 
   const scanLocalHauntings = () => {
-    const loc = window.prompt("Enter your city or region to scan for local hauntings:");
-    if (loc) {
-      handleSubmit(undefined, `Scan area: ${loc}. Tell me about local paranormal history, legends, or famous hauntings here.`);
+    if (!navigator.geolocation) {
+      const loc = window.prompt("Geolocation not supported. Enter your city or region to scan for local hauntings:");
+      if (loc) {
+        handleSubmit(undefined, `Scan area: ${loc}. Tell me about local paranormal history, legends, or famous hauntings here.`);
+      }
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        handleSubmit(undefined, `Scan area at latitude ${latitude.toFixed(5)}, longitude ${longitude.toFixed(5)}. Tell me about local paranormal history, legends, or famous hauntings here.`);
+      },
+      (error) => {
+        console.warn('Geolocation failed:', error);
+        const loc = window.prompt("Unable to access your current location. Enter your city or region to scan for local hauntings:");
+        if (loc) {
+          handleSubmit(undefined, `Scan area: ${loc}. Tell me about local paranormal history, legends, or famous hauntings here.`);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
   };
 
   const printCaseFile = () => {
