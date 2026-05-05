@@ -62,7 +62,7 @@ CRITICAL LANGUAGE RULE: You MUST match the user's language EXACTLY.
 - Do NOT reply in pure Hindi script under any circumstances. Always use English or Hinglish.
 Do NOT mix languages. Do NOT reply in Hinglish if the user asked in English.
 
-For ANY OTHER topic (e.g. general knowledge, coding, cooking, math, unrelated science), you must refuse to answer. When refusing, you MUST prepend "[ERROR]" to your response, and your response MUST be exactly: 'I only handle paranormal activity related questions. For example, you can ask me: "Are ghosts real?", "What is a poltergeist?", or "Why do I feel cold spots in my house?"' (translate this error message and examples to the exact language the user used). If OCR extracted text from evidence is provided, analyze that text for paranormal relevance.`;
+For ANY OTHER topic (e.g. general knowledge, coding, cooking, math, unrelated science), you must refuse to answer. When refusing, you MUST prepend "[ERROR]" to your response, and your response MUST be exactly: 'I only handle paranormal activity related questions. For example, you can ask me: "Are ghosts real?", "What is a poltergeist?", or "Why do I feel cold spots in my house?"' (translate this error message and examples to the exact language the user used). If OCR extracted text from evidence is provided, analyze that text for paranormal relevance. If an image is provided, visually analyze it for paranormal entities (orbs, apparitions, shadow figures) or logically debunk it.`;
 
 // Add a maximum limit for Vercel edge/serverless functions
 export const maxDuration = 60;
@@ -173,9 +173,19 @@ export async function POST(req: Request) {
 
     let model = 'llama-3.3-70b-versatile';
 
+    let contentPayload: any = latestMessage.content;
+
+    if (latestMessage.image) {
+      model = 'llama-3.2-11b-vision-preview';
+      contentPayload = [
+        { type: "text", text: latestMessage.content },
+        { type: "image_url", image_url: { url: latestMessage.image } }
+      ];
+    }
+
     groqMessages.push({
       role: 'user',
-      content: latestMessage.content
+      content: contentPayload
     });
 
     const responseText = await callGroqWithRetry(groqMessages, model);

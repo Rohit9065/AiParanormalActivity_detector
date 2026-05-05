@@ -18,8 +18,14 @@ async function testGroq() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama3-70b-8192',
-        messages: [{role: 'user', content: 'hello'}],
+        model: 'llama-3.2-11b-vision-preview',
+        messages: [{
+          role: 'user', 
+          content: [
+            { type: "text", text: "What's in this image?" },
+            { type: "image_url", image_url: { url: "https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" } }
+          ]
+        }],
         temperature: 0.7
       })
     });

@@ -429,7 +429,13 @@ export default function Chat() {
     
     const attemptFetch = async (): Promise<void> => {
       try {
-        const messagesToSend = [...messages, newMsg].map(m => ({ role: m.role, content: m.content }));
+        const messagesToSend = [...messages, newMsg].map((m, i, arr) => {
+          const formatted: any = { role: m.role, content: m.content };
+          if (m.image && i === arr.length - 1) {
+            formatted.image = m.image;
+          }
+          return formatted;
+        });
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
