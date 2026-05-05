@@ -1,7 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Weather API integration
 async function getWeatherData(city: string = 'London') {
@@ -65,37 +62,51 @@ CRITICAL LANGUAGE RULE: You MUST match the user's language EXACTLY.
 - If the user asks in pure Hindi script, reply in pure Hindi script.
 Do NOT mix languages. Do NOT reply in Hinglish if the user asked in English.
 
-For ANY OTHER topic (e.g. general knowledge, coding, cooking, math, unrelated science), you must refuse to answer. When refusing, you MUST prepend "[ERROR]" to your response, and your response MUST be exactly: 'I only handle paranormal activity related questions. For example, you can ask me: "Are ghosts real?", "What is a poltergeist?", or "Why do I feel cold spots in my house?"' (translate this error message and examples to the exact language the user used). If an image is provided, analyze it closely for possible paranormal entities (orbs, apparitions, shadow figures) or logically debunk it.`;
+For ANY OTHER topic (e.g. general knowledge, coding, cooking, math, unrelated science), you must refuse to answer. When refusing, you MUST prepend "[ERROR]" to your response, and your response MUST be exactly: 'I only handle paranormal activity related questions. For example, you can ask me: "Are ghosts real?", "What is a poltergeist?", or "Why do I feel cold spots in my house?"' (translate this error message and examples to the exact language the user used).`;
 
 // Add a maximum limit for Vercel edge/serverless functions
 export const maxDuration = 60;
 
 // Retry logic for API calls
-async function callGeminiWithRetry(
-  ai: any,
-  contents: any,
+async function callDeepseekWithRetry(
+  messages: any[],
   maxRetries: number = 3,
   delayMs: number = 2000
-): Promise<any> {
+): Promise<string> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) throw new Error("DEEPSEEK_API_KEY is not defined. Please add it to your environment variables.");
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: contents
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: messages
+        })
       });
-      return response;
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || `HTTP error ${response.status}`);
+      }
+
+      return data.choices[0].message.content;
     } catch (error: any) {
       const errorStr = error.message || String(error);
       
-      // Retry on 503 (Service Unavailable) and some other temporary errors
       if (
         errorStr.includes('503') || 
+        errorStr.includes('502') ||
         errorStr.includes('UNAVAILABLE') ||
-        errorStr.includes('DEADLINE_EXCEEDED') ||
-        errorStr.includes('INTERNAL')
+        errorStr.includes('fetch failed')
       ) {
         if (attempt < maxRetries) {
-          // Exponential backoff: 2s, 4s, 8s
           const waitTime = delayMs * Math.pow(2, attempt - 1);
           console.log(`Retry attempt ${attempt}/${maxRetries} after ${waitTime}ms...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -103,17 +114,17 @@ async function callGeminiWithRetry(
         }
       }
       
-      // If not a retryable error or all retries exhausted, throw
       throw error;
     }
   }
+  throw new Error("Max retries exceeded");
 }
 
 export async function POST(req: Request) {
   let latestMessage: any = null;
   
   try {
-    const { messages, image } = await req.json();
+    const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 });
@@ -128,15 +139,13 @@ export async function POST(req: Request) {
     const userQuery = latestMessage.content.toLowerCase();
     let weatherContext = '';
     
-    // Check if the query is about weather and paranormal activity
     if ((userQuery.includes('weather') || userQuery.includes('rain') || userQuery.includes('storm') || 
          userQuery.includes('temperature') || userQuery.includes('humidity') || userQuery.includes('wind')) &&
         (userQuery.includes('ghost') || userQuery.includes('spirit') || userQuery.includes('paranormal') || 
          userQuery.includes('haunt') || userQuery.includes('activity') || userQuery.includes('investigation'))) {
       
-      // Try to extract city name from the query
       const cityMatch = latestMessage.content.match(/(?:in|at|for)\s+([A-Za-z\s]+?)(?:\?|$|\s+(?:does|is|are|can|how|why|when|what))/i);
-      const city = cityMatch ? cityMatch[1].trim() : 'London'; // Default to London if no city found
+      const city = cityMatch ? cityMatch[1].trim() : 'London';
       
       const weatherData = await getWeatherData(city);
       if (weatherData) {
@@ -145,51 +154,36 @@ export async function POST(req: Request) {
     }
 
     const contents: any[] = [
-      { role: 'user', parts: [{ text: SYSTEM_INSTRUCTION + weatherContext + '\n\nUser Query: ' + latestMessage.content }] }
+      { role: 'system', content: SYSTEM_INSTRUCTION + weatherContext },
+      { role: 'user', content: latestMessage.content }
     ];
 
-    if (image) {
-      const base64Data = image.includes(',') ? image.split(',')[1] : image; 
-      const mimeType = image.match(/data:(.*?);/)?.[1] || 'image/jpeg';
-      
-      contents[0].parts.push({
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType
-        }
-      });
-    }
+    const responseText = await callDeepseekWithRetry(contents);
 
-    const response = await callGeminiWithRetry(ai, contents);
-
-    return NextResponse.json({ text: response.text });
+    return NextResponse.json({ text: responseText });
     } catch (error: any) {
       console.error('API Error:', error);
       const errorStr = error.message || String(error);
       const userQuery = latestMessage.content.toLowerCase();
       
-      // Try to provide fallback response if API fails
       const fallbackResponse = getFallbackResponse(userQuery);
       
       if (fallbackResponse) {
-        // If we have a fallback response, return it instead of an error
         return NextResponse.json({ 
           text: fallbackResponse + '\n\n[Note: Using cached knowledge - the AI API is temporarily unavailable. For more detailed answers, please try again later.]'
         });
       }
       
-      // Handle 503 Service Unavailable
       if (errorStr.includes('503') || errorStr.includes('UNAVAILABLE')) {
         return NextResponse.json(
-          { error: 'SERVICE TEMPORARILY UNAVAILABLE: The Gemini API is currently experiencing high demand. This usually resolves within a few minutes. Please try again in 30-60 seconds.' },
+          { error: 'SERVICE TEMPORARILY UNAVAILABLE: The DeepSeek API is currently experiencing high demand. This usually resolves within a few minutes. Please try again in 30-60 seconds.' },
           { status: 503 }
         );
       }
       
-      // Handle rate limiting and quota errors
-      if (errorStr.includes('429') || errorStr.includes('quota') || errorStr.includes('RESOURCE_EXHAUSTED')) {
+      if (errorStr.includes('429') || errorStr.includes('quota') || errorStr.includes('Insufficient Balance')) {
         return NextResponse.json(
-          { error: 'RATE LIMIT REACHED: The ethereal frequencies are jammed! You are asking questions too quickly. Please wait 60 seconds and try again.' },
+          { error: 'RATE LIMIT REACHED: The ethereal frequencies are jammed! You are asking questions too quickly or your DeepSeek API balance is insufficient.' },
           { status: 429 }
         );
       }

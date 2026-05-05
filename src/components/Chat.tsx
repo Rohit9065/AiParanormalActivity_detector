@@ -102,7 +102,6 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [emfLevel, setEmfLevel] = useState(1);
   const [audioEnabled, setAudioEnabled] = useState(false);
   
@@ -111,7 +110,6 @@ export default function Chat() {
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Audio Refs
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -324,36 +322,19 @@ export default function Chat() {
     setIsHistoryOpen(false);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  const removeImage = () => {
-    setSelectedImage(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
 
   const handleSubmit = async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
     
     const queryToUse = customQuery || input;
-    if (!queryToUse.trim() && !selectedImage) return;
+    if (!queryToUse.trim()) return;
     if (isLoading) return;
 
     const userMessage = queryToUse.trim();
     if (!customQuery) setInput('');
     
     const newMsg: Message = { role: 'user', content: userMessage };
-    if (selectedImage) {
-      newMsg.image = selectedImage;
-    }
     
     setMessages(prev => [...prev, newMsg]);
     setIsLoading(true);
@@ -367,8 +348,7 @@ export default function Chat() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            messages: [...messages, newMsg],
-            image: selectedImage
+            messages: [...messages, newMsg]
           }),
         });
 
@@ -406,8 +386,6 @@ export default function Chat() {
           role: isError ? 'error' : 'bot', 
           content: botText 
         }]);
-        
-        removeImage();
 
       } catch (error: any) {
         console.error(error);
@@ -610,38 +588,18 @@ export default function Chat() {
           </button>
         </div>
 
-        {selectedImage && (
-          <div style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-             <span style={{ fontSize: '0.8rem', color: 'var(--neon-green)' }}>EVIDENCE LOADED</span>
-             <img src={selectedImage} alt="preview" style={{ height: '40px', borderRadius: '4px', border: '1px solid #444' }} />
-             <button onClick={removeImage} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', border: '1px solid #ff3939', color: '#ff3939', background: 'transparent' }}>REMOVE</button>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="input-area">
           <div className="input-box-wrapper">
-            <input
-              type="file"
-              accept="image/*"
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-              style={{ display: 'none' }}
-              id="evidence-upload"
-            />
-            <label htmlFor="evidence-upload" className="attach-btn">
-              <Camera size={20} />
-            </label>
-
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Enter investigation query or attach evidence..."
+              placeholder="Enter investigation query..."
               disabled={isLoading}
               autoComplete="off"
             />
             
-            <button type="submit" className="send-btn" disabled={isLoading || (!input.trim() && !selectedImage)}>
+            <button type="submit" className="send-btn" disabled={isLoading || !input.trim()}>
               {isLoading ? <div className="loading" style={{ width: '16px', height: '16px', borderWidth: '2px' }} /> : <Send size={16} />}
             </button>
           </div>
