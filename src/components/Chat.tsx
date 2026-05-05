@@ -87,7 +87,9 @@ const FormattedText = ({ text }: { text: string }) => {
 };
 
 export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const defaultMessage: Message = { role: 'bot', content: 'SYSTEM ONLINE. CALIBRATED FOR PARANORMAL ENTITIES ONLY. AWAITING INPUT.' };
+  const [messages, setMessages] = useState<Message[]>([defaultMessage]);
+  const [savedHistory, setSavedHistory] = useState<Message[] | null>(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -190,30 +192,34 @@ export default function Chat() {
     const saved = localStorage.getItem('paranormal_history');
     if (saved) {
       try {
-        setMessages(JSON.parse(saved));
+        setSavedHistory(JSON.parse(saved));
       } catch (e) {
-        console.error("Failed to parse history");
+        console.error("Failed to parse history", e);
       }
-    } else {
-      setMessages([{ role: 'bot', content: 'SYSTEM ONLINE. CALIBRATED FOR PARANORMAL ENTITIES ONLY. AWAITING INPUT.' }]);
     }
+    setMessages([defaultMessage]);
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (mounted) {
-      try {
-        // Strip images before saving to prevent localStorage QuotaExceededError
-        const historyToSave = messages.map(msg => {
-          if (msg.image) {
-            return { role: msg.role, content: msg.content };
-          }
-          return msg;
-        });
-        localStorage.setItem('paranormal_history', JSON.stringify(historyToSave));
-      } catch (e) {
-        console.error("Failed to save history", e);
-      }
+    if (!mounted) return;
+
+    if (messages.length === 1 && messages[0].role === 'bot' && messages[0].content === defaultMessage.content) {
+      return;
+    }
+
+    try {
+      // Strip images before saving to prevent localStorage QuotaExceededError
+      const historyToSave = messages.map(msg => {
+        if (msg.image) {
+          return { role: msg.role, content: msg.content };
+        }
+        return msg;
+      });
+      localStorage.setItem('paranormal_history', JSON.stringify(historyToSave));
+      setSavedHistory(historyToSave);
+    } catch (e) {
+      console.error("Failed to save history", e);
     }
   }, [messages, mounted]);
 
@@ -226,7 +232,16 @@ export default function Chat() {
   }, [messages]);
 
   const clearHistory = () => {
-    setMessages([{ role: 'bot', content: 'SYSTEM ONLINE. CALIBRATED FOR PARANORMAL ENTITIES ONLY. AWAITING INPUT.' }]);
+    setMessages([defaultMessage]);
+    setSavedHistory(null);
+    localStorage.removeItem('paranormal_history');
+  };
+
+  const restoreSavedHistory = () => {
+    if (savedHistory) {
+      setMessages(savedHistory);
+      setIsHistoryOpen(false);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -377,6 +392,9 @@ export default function Chat() {
   if (!mounted) return <div className="chat-layout"></div>;
 
   const historyQueries = messages.filter(m => m.role === 'user');
+  const savedHistoryQueries = savedHistory?.filter(m => m.role === 'user') ?? [];
+  const displayedHistoryQueries = historyQueries.length > 0 ? historyQueries : savedHistoryQueries;
+  const usingSavedHistory = historyQueries.length === 0 && savedHistoryQueries.length > 0;
 
   return (
     <div className="chat-layout">
@@ -400,24 +418,42 @@ export default function Chat() {
       {/* Sidebar History */}
       <div className={`sidebar ${isHistoryOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <span>Case Files</span>
+          <span>{usingSavedHistory ? 'Previous Session' : 'Case Files'}</span>
           <button className="mobile-close-btn icon-btn" onClick={() => setIsHistoryOpen(false)}>
             <X size={20} />
           </button>
         </div>
         <div className="history-list">
-          {historyQueries.length === 0 ? (
-            <div style={{ color: '#555', fontSize: '0.8rem', textAlign: 'center', marginTop: '2rem' }}>No previous queries found.</div>
+          {displayedHistoryQueries.length === 0 ? (
+            <div style={{ color: '#555', fontSize: '0.8rem', textAlign: 'center', marginTop: '2rem' }}>
+              {savedHistory ? 'Previous session available. Click RESTORE HISTORY to load it.' : 'No previous queries found.'}
+            </div>
           ) : (
-            historyQueries.map((msg, i) => (
-              <div key={i} className="history-item" title={msg.content}>
+            displayedHistoryQueries.map((msg, i) => (
+              <div
+                key={i}
+                className="history-item"
+                title={msg.content}
+                onClick={usingSavedHistory ? restoreSavedHistory : undefined}
+                style={{ cursor: usingSavedHistory ? 'pointer' : 'default' }}
+              >
                 {msg.content || "[Image attached]"}
               </div>
             ))
           )}
         </div>
+        {savedHistory && (
+          <div style={{ padding: '0 1rem', marginTop: '0.75rem' }}>
+            <button
+              onClick={restoreSavedHistory}
+              style={{ width: '100%', fontSize: '0.8rem', padding: '0.6rem', background: '#111', border: '1px solid var(--neon-green)', color: 'var(--neon-green)', cursor: 'pointer' }}
+            >
+              RESTORE PREVIOUS SESSION
+            </button>
+          </div>
+        )}
         <div className="clear-btn">
-          <button onClick={clearHistory} disabled={historyQueries.length === 0}>CLEAR HISTORY</button>
+          <button onClick={clearHistory} disabled={!savedHistory && historyQueries.length === 0}>CLEAR HISTORY</button>
         </div>
       </div>
 
