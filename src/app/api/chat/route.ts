@@ -138,18 +138,26 @@ export async function POST(req: Request) {
 
     const userQuery = latestMessage.content.toLowerCase();
     let weatherContext = '';
+    let targetCity = '';
     
-    if ((userQuery.includes('weather') || userQuery.includes('rain') || userQuery.includes('storm') || 
-         userQuery.includes('temperature') || userQuery.includes('humidity') || userQuery.includes('wind')) &&
-        (userQuery.includes('ghost') || userQuery.includes('spirit') || userQuery.includes('paranormal') || 
-         userQuery.includes('haunt') || userQuery.includes('activity') || userQuery.includes('investigation'))) {
-      
+    // Auto-fetch weather for "Scan Area" features or direct weather questions
+    if (userQuery.includes('scan area:')) {
+      const scanMatch = latestMessage.content.match(/Scan area:\s*([^(]+)/i);
+      if (scanMatch && scanMatch[1]) {
+        targetCity = scanMatch[1].trim();
+      }
+    } else if (
+      (userQuery.includes('weather') || userQuery.includes('temperature') || userQuery.includes('cold') || userQuery.includes('climate')) &&
+      (userQuery.includes('ghost') || userQuery.includes('haunt') || userQuery.includes('paranormal') || userQuery.includes('spirit'))
+    ) {
       const cityMatch = latestMessage.content.match(/(?:in|at|for)\s+([A-Za-z\s]+?)(?:\?|$|\s+(?:does|is|are|can|how|why|when|what))/i);
-      const city = cityMatch ? cityMatch[1].trim() : 'London';
-      
-      const weatherData = await getWeatherData(city);
+      targetCity = cityMatch ? cityMatch[1].trim() : 'London';
+    }
+
+    if (targetCity) {
+      const weatherData = await getWeatherData(targetCity);
       if (weatherData) {
-        weatherContext = `\n\nCurrent weather in ${weatherData.city}, ${weatherData.country}: ${weatherData.temperature}°C, ${weatherData.description}, ${weatherData.humidity}% humidity, wind speed ${weatherData.windSpeed} m/s. Consider how these conditions might affect paranormal activity.`;
+        weatherContext = `\n\n[SYSTEM SENSOR DATA] Current real-world weather in ${weatherData.city}, ${weatherData.country}: ${weatherData.temperature}°C, ${weatherData.description}, ${weatherData.humidity}% humidity, wind speed ${weatherData.windSpeed} m/s. Incorporate this environmental data into your investigation analysis (e.g., how the temperature or humidity might affect entity manifestations, EMF readings, or cold spots).`;
       }
     }
 
